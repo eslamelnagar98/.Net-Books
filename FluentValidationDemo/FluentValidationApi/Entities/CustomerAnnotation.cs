@@ -1,8 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
 namespace FluentValidationApi.Entities;
 public class CustomerAnnotation
 {
-    [Required]
     public int Id { get; set; }
     [Required]
     public string Surname { get; set; }
@@ -17,7 +17,7 @@ public class CustomerAnnotation
     [Required]
     public AddressAnnotation Address { get; set; }
 
-    [Required]
+    [NotMapped]
     public List<string> Basket { get; set; } = new();
 
 }

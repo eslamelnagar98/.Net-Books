@@ -1,7 +1,4 @@
-﻿using FluentValidation;
-using FluentValidation.Validators;
-
-namespace FluentValidationApi.Entities.Validator.PropertyValidators;
+﻿namespace FluentValidationApi.Entities.Validator.PropertyValidators;
 public class BasketCountValidator : PropertyValidator<Customer, List<string>>
 {
     public override string Name => nameof(BasketCountValidator);
@@ -21,5 +18,7 @@ public class BasketCountValidator : PropertyValidator<Customer, List<string>>
     }
 
     protected override string GetDefaultMessageTemplate(string errorCode)
-        => $"basket List must contain fewer than {_maxCount} items.";
+    {
+        return $"basket List must contain fewer than {_maxCount} items.";
+    }
 }

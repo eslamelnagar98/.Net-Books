@@ -1,6 +1,4 @@
-﻿using FluentValidationApi.Entities;
-using Microsoft.AspNetCore.Mvc;
-namespace FluentValidationApi.Controllers;
+﻿namespace FluentValidationApi.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class CustomerAnnotationController : ControllerBase

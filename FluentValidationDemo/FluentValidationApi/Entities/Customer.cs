@@ -1,5 +1,4 @@
-﻿using FluentValidationApi.Enums;
-namespace FluentValidationApi.Entities;
+﻿namespace FluentValidationApi.Entities;
 public class Customer
 {
     public int Id { get; set; }

@@ -1,5 +1,4 @@
-﻿using FluentValidation;
-namespace FluentValidationApi.Entities.Validator;
+﻿namespace FluentValidationApi.Entities.Validator;
 public class AddressValidator : AbstractValidator<Address>
 {
     public AddressValidator()

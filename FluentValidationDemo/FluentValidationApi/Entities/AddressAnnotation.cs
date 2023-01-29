@@ -1,8 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace FluentValidationApi.Entities;
+﻿namespace FluentValidationApi.Entities;
 public class AddressAnnotation
 {
+    public int Id { get; set; }
     [Required]
     public string Line1 { get; set; }
     [Required]
