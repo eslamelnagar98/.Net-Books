@@ -1,13 +1,44 @@
-﻿using System.Text;
-using RabbitMQ.Client;
-
-namespace RabbitMQInDepth;
-public static class RabbitMQPublisher
+﻿namespace RabbitMQInDepth;
+internal static class RabbitMQPublisher
 {
-    public static void BasicReturn()
+    internal static async Task HandlePublisherTest()
     {
-        var factory = RabbitMQManager.CreateConnectionFactory();
-        using var connection = factory.CreateConnection();
+        Console.WriteLine("Which Publisher Mechanism You Want To Use");
+        Console.WriteLine($"1- Publisher Confirmation Test {Environment.NewLine}2- Basic Return Test {Environment.NewLine}3- Alternate Exchange " +
+                          $"{Environment.NewLine}4- RabbitMQ Transaction Test {Environment.NewLine}5- RabbitMQ Atomic Transaction Test");
+        var publisherMechanism = short.Parse(Console.ReadLine());
+        await TestPublisher(publisherMechanism);
+    }
+    private static async Task TestPublisher(short publisherMechanism)
+    {
+        switch (publisherMechanism)
+        {
+            case 1:
+                Console.WriteLine("Enter Number OF Messages You Want To Publish");
+                var messageCount = short.Parse(Console.ReadLine());
+                PublisherConfirms.MessageCount = messageCount;
+                await PublisherConfirms.Create();
+                break;
+            case 2:
+                BasicReturn();
+                break;
+            case 3:
+                AlternateExchanges();
+                break;
+            case 4:
+                AlternateExchanges();
+                break;
+            case 5:
+                RabbitMQTransaction();
+                break;
+            case 6:
+                RabbitMQAtomicTransaction();
+                break;
+        }
+    }
+    private static void BasicReturn()
+    {
+        using var connection = RabbitMQManager.CreateConnectionFactory();
         using var channel = connection.CreateModel();
         var exchangeName = "BasicReturnExchange";
         channel.ExchangeDeclare(exchangeName, ExchangeType.Direct);
@@ -26,10 +57,9 @@ public static class RabbitMQPublisher
         channel.BasicPublish(exchangeName, routingKey, mandatory: true, properties, messageBody);
     }
 
-    public static void PublisherConfirmation()
+    private static void PublisherConfirmation()
     {
-        var factory = RabbitMQManager.CreateConnectionFactory();
-        using var connection = factory.CreateConnection();
+        using var connection = RabbitMQManager.CreateConnectionFactory();
         using var channel = connection.CreateModel();
         channel.ConfirmSelect();
 
@@ -64,10 +94,9 @@ public static class RabbitMQPublisher
         channel.BasicPublish(exchangeName, queueName, true, properties, messageBody);
     }
 
-    public static void AlternateExchanges()
+    private static void AlternateExchanges()
     {
-        var factory = RabbitMQManager.CreateConnectionFactory();
-        using var connection = factory.CreateConnection();
+        using var connection = RabbitMQManager.CreateConnectionFactory();
         using var channel = connection.CreateModel();
         var alternateExchangeName = "AlternateExchange";
         var mainExchangeName = "OrignalExchange_Alternate";
@@ -87,10 +116,9 @@ public static class RabbitMQPublisher
         channel.BasicPublish(mainExchangeName, queueName, true, null, routableMessageBytes);
     }
 
-    public static void RabbitMQTransaction()
+    private static void RabbitMQTransaction()
     {
-        var factory = RabbitMQManager.CreateConnectionFactory();
-        using var connection = factory.CreateConnection();
+        using var connection = RabbitMQManager.CreateConnectionFactory();
         using var channel = connection.CreateModel();
         try
         {
@@ -103,7 +131,6 @@ public static class RabbitMQPublisher
             var message = "Hello, RabbitMQ!";
             var body = Encoding.UTF8.GetBytes(message);
             channel.BasicPublish(exchangeName, queueName, mandatory: true, basicProperties: null, body);
-            throw new Exception("Simulated exception");
             channel.TxCommit();
         }
         catch (Exception ex)
@@ -113,37 +140,34 @@ public static class RabbitMQPublisher
         }
     }
 
-    public static void RabbitMQAtomicTransaction()
+    private static void RabbitMQAtomicTransaction()
     {
-
-        var factory = RabbitMQManager.CreateConnectionFactory();
-        using var connection = factory.CreateConnection();
+        using var connection = RabbitMQManager.CreateConnectionFactory();
         using var channel = connection.CreateModel();
+        try
         {
-            try
-            {
-                channel.TxSelect();
-                var exchangeName = "TransactionExchange";
-                var firstQueueName = "TransactionQueue_1";
-                var secondQueueName = "TransactionQueue_2";
-                channel.ExchangeDeclare(exchangeName, ExchangeType.Direct, durable: true, autoDelete: false, arguments: null);
-                channel.QueueDeclare(firstQueueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
-                channel.QueueBind(firstQueueName, exchangeName, firstQueueName, arguments: null);
-                channel.QueueDeclare(secondQueueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
-                channel.QueueBind(secondQueueName, exchangeName, secondQueueName, arguments: null);
-                var firstMessage = "Message for Queue TransactionQueue_1";
-                var firstMessageBody = Encoding.UTF8.GetBytes(firstMessage);
-                channel.BasicPublish(exchangeName, firstQueueName, mandatory: true, basicProperties: null, firstMessageBody);
-                var secondMessage = "Message for Queue TransactionQueue_2";
-                var secondMessageBody = Encoding.UTF8.GetBytes(secondMessage);
-                channel.BasicPublish(exchangeName, secondQueueName, mandatory: true, basicProperties: null, secondMessageBody);
-                channel.TxCommit();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error occurred: {ex.Message}");
-                channel.TxRollback();
-            }
+            channel.TxSelect();
+            var exchangeName = "TransactionExchange";
+            var firstQueueName = "TransactionQueue_1";
+            var secondQueueName = "TransactionQueue_2";
+            channel.ExchangeDeclare(exchangeName, ExchangeType.Direct, durable: true, autoDelete: false, arguments: null);
+            channel.QueueDeclare(firstQueueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+            channel.QueueBind(firstQueueName, exchangeName, firstQueueName, arguments: null);
+            channel.QueueDeclare(secondQueueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+            channel.QueueBind(secondQueueName, exchangeName, secondQueueName, arguments: null);
+            var firstMessage = "Message for Queue TransactionQueue_1";
+            var firstMessageBody = Encoding.UTF8.GetBytes(firstMessage);
+            channel.BasicPublish(exchangeName, firstQueueName, mandatory: true, basicProperties: null, firstMessageBody);
+            var secondMessage = "Message for Queue TransactionQueue_2";
+            var secondMessageBody = Encoding.UTF8.GetBytes(secondMessage);
+            channel.BasicPublish(exchangeName, secondQueueName, mandatory: true, basicProperties: null, secondMessageBody);
+            channel.TxCommit();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error occurred: {ex.Message}");
+            channel.TxRollback();
         }
     }
+
 }

@@ -1,37 +1,56 @@
-﻿using System.Text;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
-namespace RabbitMQInDepth;
-public static class RabbitMQConsumer
+﻿namespace RabbitMQInDepth;
+internal static class RabbitMQConsumer
 {
-    public static async Task QualityOfService()
+    internal static async Task HandleConsumerTest()
     {
-        var factory = RabbitMQManager.CreateConnectionFactory();
-        using var connection = factory.CreateConnection();
-        using var channel = connection.CreateModel();
-        string queueName = "PublisherConfirmQueue";
-        channel.QueueDeclare(queueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
-        channel.BasicQos(prefetchSize: 0, prefetchCount: 10, global: false);
-        for (int i = 0; i < 3; i++)
+        Console.WriteLine("Which Consumer Mechanism You Want To Use");
+        Console.WriteLine($"1- Consumer Tag Test {Environment.NewLine}2- Quality Of Service ");
+        var cosumerMechanism = short.Parse(Console.ReadLine());
+        await TestConsumer(cosumerMechanism);
+    }
+    private static async Task TestConsumer(short publisherMechanism)
+    {
+        Console.WriteLine("Is Async?");
+        var isAsync = bool.Parse(Console.ReadLine());
+        switch (publisherMechanism)
         {
-            var consumer = new AsyncEventingBasicConsumer(channel);
-            consumer.Received += async (_, ea) => await ProcessQualityOfServiceMessage(ea, channel, i);
-            channel.BasicConsume(queueName, autoAck: false, consumer);
+            case 1:
+                ConsumerTag(isAsync);
+                break;
+            case 2:
+                await QualityOfService(isAsync);
+                break;
         }
-        Console.WriteLine("Consumers started. Press any key to exit.");
         await Task.CompletedTask;
     }
-    public static void ConsumerTag()
+    public static async Task QualityOfService(bool isAsync)
     {
-        var factory = RabbitMQManager.CreateConnectionFactory();
-        using var connection = factory.CreateConnection();
+        using var connection = RabbitMQManager.CreateConnectionFactory(isAsync);
+        using var channel = connection.CreateModel();
+        var queueName = "PublisherConfirmQueue";
+        channel.BasicQos(prefetchSize: 0, prefetchCount: 30, global: false);
+        for (int i = 0; i < 3; i++)
+        {
+            var consumerIndex = i;
+            var consumer = new AsyncEventingBasicConsumer(channel);
+            consumer.Received += async (_, @event) => await ProcessQualityOfServiceMessage(@event, channel, consumerIndex);
+            channel.BasicConsume(queueName, autoAck: false, consumer);
+        }
+        Console.WriteLine("Consumers started");
+        Console.ReadKey();
+        await Task.CompletedTask;
+    }
+
+    private static void ConsumerTag(bool isAsync)
+    {
+        using var connection = RabbitMQManager.CreateConnectionFactory(isAsync);
         using var channel = connection.CreateModel();
         var queueName = "AlternateExample";
         var consumer = new EventingBasicConsumer(channel);
         consumer.Received += (_, ea) => ProcessConsumerTagMessage(ea, channel);
         string consumerTag = "consumer1";
         channel.BasicConsume(queueName, autoAck: false, consumerTag, consumer);
-        Console.WriteLine("Consumer started.Press any key to exit.");
+        Console.WriteLine("Consumer started");
     }
 
     private static void ProcessConsumerTagMessage(BasicDeliverEventArgs @event, IModel channel)
@@ -53,7 +72,8 @@ public static class RabbitMQConsumer
     {
         var message = Encoding.UTF8.GetString(@event.Body.ToArray());
         Console.WriteLine($"Consumer Number {consumerIndex + 1} Received message: {message}");
-        await Task.Delay(TimeSpan.FromSeconds(2));
-        //channel.BasicAck(deliveryTag: @event.DeliveryTag, multiple: false);
+        //await Task.Delay(TimeSpan.FromMilliseconds(1));
+        channel.BasicAck(deliveryTag: @event.DeliveryTag, multiple: false);
+        await Task.CompletedTask;
     }
 }

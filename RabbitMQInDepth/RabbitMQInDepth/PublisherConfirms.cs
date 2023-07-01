@@ -1,34 +1,16 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Text;
-using RabbitMQ.Client;
-
-namespace RabbitMQInDepth;
+﻿namespace RabbitMQInDepth;
 public static class PublisherConfirms
 {
-    private const int MESSAGE_COUNT = 50;
+    public static short MessageCount { private get; set; }
     private static readonly ConcurrentDictionary<ulong, string> _outstandingConfirms = new();
     internal static async Task Create()
     {
-        //PublishMessagesIndividually();
-        //PublishMessagesInBatch();
         await HandlePublishConfirmsAsynchronously();
-    }
-    private static IConnection CreateConnection()
-    {
-        var factory = new ConnectionFactory
-        {
-            HostName = "localhost",
-            Port = 5672,
-            UserName = "guest",
-            Password = "guest"
-        };
-        return factory.CreateConnection();
     }
 
     private static void PublishMessagesIndividually()
     {
-        using var connection = CreateConnection();
+        using var connection = RabbitMQManager.CreateConnectionFactory();
         using var channel = connection.CreateModel();
 
         // declare a server-named queue
@@ -37,7 +19,7 @@ public static class PublisherConfirms
 
         var startTime = Stopwatch.GetTimestamp();
 
-        for (int i = 0; i < MESSAGE_COUNT; i++)
+        for (int i = 0; i < MessageCount; i++)
         {
             var body = Encoding.UTF8.GetBytes(i.ToString());
             channel.BasicPublish(exchange: string.Empty, routingKey: queueName, basicProperties: null, body: body);
@@ -46,15 +28,13 @@ public static class PublisherConfirms
 
         var endTime = Stopwatch.GetTimestamp();
 
-        Console.WriteLine($"Published {MESSAGE_COUNT:N0} messages individually in {Stopwatch.GetElapsedTime(startTime, endTime).TotalMilliseconds:N0} ms");
+        Console.WriteLine($"Published {MessageCount:N0} messages individually in {Stopwatch.GetElapsedTime(startTime, endTime).TotalMilliseconds:N0} ms");
     }
 
     private static void PublishMessagesInBatch()
     {
-        using var connection = CreateConnection();
+        using var connection = RabbitMQManager.CreateConnectionFactory();
         using var channel = connection.CreateModel();
-
-        // declare a server-named queue
         var queueName = channel.QueueDeclare().QueueName;
         channel.ConfirmSelect();
 
@@ -63,7 +43,7 @@ public static class PublisherConfirms
 
         var startTime = Stopwatch.GetTimestamp();
 
-        for (int i = 0; i < MESSAGE_COUNT; i++)
+        for (int i = 0; i < MessageCount; i++)
         {
             var body = Encoding.UTF8.GetBytes(i.ToString());
             channel.BasicPublish(exchange: string.Empty, routingKey: queueName, basicProperties: null, body: body);
@@ -81,14 +61,13 @@ public static class PublisherConfirms
 
         var endTime = Stopwatch.GetTimestamp();
 
-        Console.WriteLine($"Published {MESSAGE_COUNT:N0} messages in batch in {Stopwatch.GetElapsedTime(startTime, endTime).TotalMilliseconds:N0} ms");
+        Console.WriteLine($"Published {MessageCount:N0} messages in batch in {Stopwatch.GetElapsedTime(startTime, endTime).TotalMilliseconds:N0} ms");
     }
 
     private static async Task HandlePublishConfirmsAsynchronously()
     {
-        using var connection = CreateConnection();
+        using var connection = RabbitMQManager.CreateConnectionFactory();
         using var channel = connection.CreateModel();
-
         var exchangeName = "PublisherConfirmExchange";
         channel.ExchangeDeclare(exchangeName, ExchangeType.Direct);
 
@@ -112,7 +91,7 @@ public static class PublisherConfirms
 
         var startTime = Stopwatch.GetTimestamp();
 
-        for (int i = 0; i < MESSAGE_COUNT; i++)
+        for (int i = 0; i < MessageCount; i++)
         {
             var body = (i + 1).ToString();
             _outstandingConfirms.TryAdd(channel.NextPublishSeqNo, i.ToString());
@@ -125,7 +104,7 @@ public static class PublisherConfirms
         }
 
         var endTime = Stopwatch.GetTimestamp();
-        Console.WriteLine($"Published {MESSAGE_COUNT:N0} messages and handled confirm asynchronously {Stopwatch.GetElapsedTime(startTime, endTime).TotalMilliseconds:N0} ms");
+        Console.WriteLine($"Published {MessageCount:N0} messages and handled confirm asynchronously {Stopwatch.GetElapsedTime(startTime, endTime).TotalMilliseconds:N0} ms");
     }
 
     private static void CleanOutstandingConfirms(ulong sequenceNumber, bool multiple)

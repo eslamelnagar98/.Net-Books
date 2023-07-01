@@ -1,15 +1,29 @@
-﻿using RabbitMQ.Client;
-namespace RabbitMQInDepth;
+﻿namespace RabbitMQInDepth;
 public static class RabbitMQManager
 {
-    public static ConnectionFactory CreateConnectionFactory()
+    public static IConnection CreateConnectionFactory(bool isAsync)
     {
-        return new ConnectionFactory
+        return CreateFactoryObject(isAsync).CreateConnection();
+    }
+    public static IConnection CreateConnectionFactory()
+    {
+        return CreateFactoryObject().CreateConnection();
+    }
+
+    private static ConnectionFactory CreateFactoryObject(bool isAsync = false)
+    {
+        var factory = new ConnectionFactory()
         {
             HostName = "localhost",
             Port = 5672,
             UserName = "guest",
-            Password = "guest"
+            Password = "guest",
         };
+
+        if (isAsync)
+        {
+            factory.DispatchConsumersAsync = true;
+        }
+        return factory;
     }
 }
