@@ -1,22 +1,24 @@
 ﻿namespace RabbitMQInDepth;
 internal static class RabbitMQPublisher
 {
+    private static short _messageCount;
     internal static async Task HandlePublisherTest()
     {
         Console.WriteLine("Which Publisher Mechanism You Want To Use");
         Console.WriteLine($"1- Publisher Confirmation Test {Environment.NewLine}2- Basic Return Test {Environment.NewLine}3- Alternate Exchange " +
-                          $"{Environment.NewLine}4- RabbitMQ Transaction Test {Environment.NewLine}5- RabbitMQ Atomic Transaction Test");
+                          $"{Environment.NewLine}4- RabbitMQ Transaction Test {Environment.NewLine}5- RabbitMQ Atomic Transaction Test" +
+                          $"{Environment.NewLine}6- Publish To Direct Exchange.");
         var publisherMechanism = short.Parse(Console.ReadLine());
         await TestPublisher(publisherMechanism);
     }
     private static async Task TestPublisher(short publisherMechanism)
     {
+        Console.WriteLine("Enter Number OF Messages You Want To Publish");
+        _messageCount = short.Parse(Console.ReadLine());
         switch (publisherMechanism)
         {
             case 1:
-                Console.WriteLine("Enter Number OF Messages You Want To Publish");
-                var messageCount = short.Parse(Console.ReadLine());
-                PublisherConfirms.MessageCount = messageCount;
+                PublisherConfirms.MessageCount = _messageCount;
                 await PublisherConfirms.Create();
                 break;
             case 2:
@@ -26,13 +28,15 @@ internal static class RabbitMQPublisher
                 AlternateExchanges();
                 break;
             case 4:
-                AlternateExchanges();
-                break;
-            case 5:
                 RabbitMQTransaction();
                 break;
-            case 6:
+            case 5:
                 RabbitMQAtomicTransaction();
+                break;
+            case 6:
+                Console.WriteLine("Please Enter Your Desire Routing Key.");
+                var routingKey = Console.ReadLine();
+                PublishToDirectExchangeUsingRoutingKey(routingKey);
                 break;
         }
     }
@@ -168,6 +172,20 @@ internal static class RabbitMQPublisher
             Console.WriteLine($"Error occurred: {ex.Message}");
             channel.TxRollback();
         }
+    }
+
+    private static void PublishToDirectExchangeUsingRoutingKey(string routingKey)
+    {
+        using var connection = RabbitMQManager.CreateConnectionFactory();
+        using var channel = connection.CreateModel();
+        var startTime = Stopwatch.GetTimestamp();
+        for (int i = 0; i < _messageCount; i++)
+        {
+            var body = (i + 1).ToString();
+            channel.BasicPublish(string.Empty, routingKey, false, null, body: Encoding.UTF8.GetBytes(body));
+        }
+        var endTime = Stopwatch.GetTimestamp();
+        Console.WriteLine($"Published {_messageCount:N0} messages {Stopwatch.GetElapsedTime(startTime, endTime).TotalMilliseconds:N0} ms");
     }
 
 }
