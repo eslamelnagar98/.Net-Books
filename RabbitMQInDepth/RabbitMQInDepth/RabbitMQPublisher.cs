@@ -181,8 +181,7 @@ internal static class RabbitMQPublisher
         var startTime = Stopwatch.GetTimestamp();
         for (int i = 0; i < _messageCount; i++)
         {
-            var body = (i + 1).ToString();
-            channel.BasicPublish(string.Empty, routingKey, false, null, body: Encoding.UTF8.GetBytes(body));
+            channel.BasicPublish(string.Empty, routingKey, false, null, body: Encoding.UTF8.GetBytes($"{i+1}"));
         }
         var endTime = Stopwatch.GetTimestamp();
         Console.WriteLine($"Published {_messageCount:N0} messages {Stopwatch.GetElapsedTime(startTime, endTime).TotalMilliseconds:N0} ms");
