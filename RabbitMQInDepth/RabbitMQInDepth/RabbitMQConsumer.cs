@@ -49,7 +49,7 @@ internal static class RabbitMQConsumer
             { "x-dead-letter-routing-key", deadLetterRoutingKey },
             { "x-message-ttl", 30000 }
         };
-        channel.ExchangeDeclare(deadLetterExchangeName, ExchangeType.Fanout);
+        channel.ExchangeDeclare(deadLetterExchangeName, ExchangeType.Direct);
         channel.QueueDeclare(deadLetterQueueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
         channel.QueueDeclare(queueName, durable: true, exclusive: false, autoDelete: false, arguments: mainQueueArguments);
         channel.QueueBind(deadLetterQueueName, deadLetterExchangeName, deadLetterRoutingKey);
